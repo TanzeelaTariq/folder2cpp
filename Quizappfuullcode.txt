@@ -1,0 +1,434 @@
+package QuizApp1;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class QuizApp1 implements ActionListener {
+    private JFrame loginFrame, welcomeFrame, categoryFrame, levelFrame, quizFrame, scoreFrame;
+    private JTextField emailField;
+    private JPasswordField passwordField;
+    private JLabel welcomeLabel, questionLabel, scoreLabel, timerLabel, quizTypeLabel;
+    private Connection connection;
+    private Image backgroundImage;
+    private JButton prevButton, easyButton, mediumButton, hardButton;
+    private JButton nextButton;
+    private int currentQuestionIndex = 0;
+    private int score = 0;
+    private String currentLevel;
+    private Timer timer;
+    private int timeRemaining;
+    private boolean submitClicked = false;
+    private ButtonGroup answerGroup;
+    private JRadioButton[] answerOptions;
+    private String[] questions = {
+        "What is Java?", "What is Inheritance?", "What is Polymorphism?", "What is Encapsulation?", "What is Abstraction?"
+    };
+    private String[][] options = {
+        {"Programming Language", "OS", "IDE", "None"},
+        {"OOP Concept", "Java feature", "Language", "None"},
+        {"Compile-time", "Run-time", "Both", "None"},
+        {"Binding", "Hiding", "Both", "None"},
+        {"Details", "Methods", "Classes", "None"}
+    };
+    private int[] correctAnswers = {0, 0, 2, 1, 2};
+
+    public QuizApp1() {
+        // Load background image
+        try {
+            backgroundImage = ImageIO.read(new File("C:\\Users\\ASUS\\Pictures\\quiz31.png"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Establishing a database connection
+        establishConnection();
+
+        createLoginFrame();
+    }
+
+    private void establishConnection() {
+        try {
+            Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
+            connection = DriverManager.getConnection("jdbc:ucanaccess://D:\\quizapp.accdb");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(null, "Failed to connect to database", "Database Connection Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+
+    private void createLoginFrame() {
+        loginFrame = new JFrame("Login");
+        JPanel loginPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        loginPanel.setOpaque(false);
+        loginPanel.setLayout(new BoxLayout(loginPanel, BoxLayout.Y_AXIS));
+
+        JLabel usernameLabel = new JLabel("Email:", SwingConstants.CENTER);
+        usernameLabel.setForeground(Color.white);
+        usernameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        emailField = new JTextField(15);
+        emailField.setMaximumSize(new Dimension(200, 20));
+        emailField.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel passwordLabel = new JLabel("Password:", SwingConstants.CENTER);
+        passwordLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        passwordLabel.setForeground(Color.white);
+        passwordField = new JPasswordField(15);
+        passwordField.setMaximumSize(new Dimension(200, 20));
+        passwordField.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton loginButton = new JButton("Login");
+        loginButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        loginButton.addActionListener(this);
+
+        loginPanel.add(Box.createVerticalGlue());
+        loginPanel.add(usernameLabel);
+        loginPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        loginPanel.add(emailField);
+        loginPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        loginPanel.add(passwordLabel);
+        loginPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        loginPanel.add(passwordField);
+        loginPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        loginPanel.add(loginButton);
+        loginPanel.add(Box.createVerticalGlue());
+
+        loginFrame.add(loginPanel);
+        loginFrame.setSize(400, 300);
+        loginFrame.setLocationRelativeTo(null);
+        loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        loginFrame.setVisible(true);
+    }
+
+    private void createWelcomeFrame(boolean loginSuccessful) {
+        welcomeFrame = new JFrame("Welcome");
+        JPanel welcomePanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        welcomePanel.setOpaque(false);
+        welcomePanel.setLayout(new BoxLayout(welcomePanel, BoxLayout.Y_AXIS));
+
+        if (loginSuccessful) {
+            welcomeLabel = new JLabel("Hey, welcome to the Quiz App!", SwingConstants.CENTER);
+            welcomeLabel.setForeground(Color.white);
+        } else {
+            welcomeLabel = new JLabel("Login failed. Please check your email and password.", SwingConstants.CENTER);
+        }
+        welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton startQuizButton = new JButton("Start Quiz");
+        startQuizButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        startQuizButton.addActionListener(this);
+
+        welcomePanel.add(Box.createVerticalGlue());
+        welcomePanel.add(welcomeLabel);
+        welcomePanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        welcomePanel.add(startQuizButton);
+        welcomePanel.add(Box.createVerticalGlue());
+
+        welcomeFrame.add(welcomePanel);
+        welcomeFrame.setSize(400, 300);
+        welcomeFrame.setLocationRelativeTo(null);
+        welcomeFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        welcomeFrame.setVisible(true);
+    }
+
+    private void createCategoryFrame() {
+        categoryFrame = new JFrame("Categories");
+        JPanel categoryPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        categoryPanel.setOpaque(false);
+        categoryPanel.setLayout(new BoxLayout(categoryPanel, BoxLayout.Y_AXIS));
+
+        JButton programmingButton = new JButton("Programming Languages");
+        programmingButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        programmingButton.addActionListener(this);
+
+        JButton englishButton = new JButton("English");
+        englishButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        englishButton.addActionListener(this);
+
+        JButton othersButton = new JButton("Others");
+        othersButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        othersButton.addActionListener(this);
+
+        categoryPanel.add(Box.createVerticalGlue());
+        categoryPanel.add(programmingButton);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        categoryPanel.add(englishButton);
+        categoryPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        categoryPanel.add(othersButton);
+        categoryPanel.add(Box.createVerticalGlue());
+
+        categoryFrame.add(categoryPanel);
+        categoryFrame.setSize(400, 300);
+        categoryFrame.setLocationRelativeTo(null);
+        categoryFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        categoryFrame.setVisible(true);
+    }
+
+    private void createLevelFrame() {
+        levelFrame = new JFrame("Levels");
+        JPanel levelPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        levelPanel.setOpaque(false);
+        levelPanel.setLayout(new BoxLayout(levelPanel, BoxLayout.Y_AXIS));
+
+        JButton easyButton = new JButton("Easy");
+        easyButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        easyButton.addActionListener(this);
+
+        JButton mediumButton = new JButton("Medium");
+        mediumButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mediumButton.addActionListener(this);
+
+        JButton hardButton = new JButton("Hard");
+        hardButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        hardButton.addActionListener(this);
+
+        levelPanel.add(Box.createVerticalGlue());
+        levelPanel.add(easyButton);
+        levelPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        levelPanel.add(mediumButton);
+        levelPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        levelPanel.add(hardButton);
+        levelPanel.add(Box.createVerticalGlue());
+
+        levelFrame.add(levelPanel);
+        levelFrame.setSize(400, 300);
+        levelFrame.setLocationRelativeTo(null);
+        levelFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        levelFrame.setVisible(true);
+    }
+
+    private void createQuizFrame() {
+        quizFrame = new JFrame("Quiz");
+        JPanel quizPanel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        quizPanel.setOpaque(false);
+        JPanel topPanel = new JPanel(new BorderLayout());
+        
+        questionLabel = new JLabel("", SwingConstants.CENTER);
+        quizTypeLabel = new JLabel("", SwingConstants.LEFT); // Initialize quizTypeLabel
+        timerLabel = new JLabel("", SwingConstants.RIGHT);
+        
+        questionLabel.setForeground(Color.WHITE);
+        quizTypeLabel.setForeground(Color.WHITE);
+        timerLabel.setForeground(Color.WHITE);
+        
+        topPanel.add(quizTypeLabel, BorderLayout.WEST);
+        topPanel.add(questionLabel, BorderLayout.CENTER);
+        topPanel.add(timerLabel, BorderLayout.EAST);
+        
+        JPanel optionsPanel = new JPanel(new GridLayout(4, 1));
+        answerOptions = new JRadioButton[4];
+        answerGroup = new ButtonGroup();
+        for (int i = 0; i < 4; i++) {
+            answerOptions[i] = new JRadioButton();
+            answerGroup.add(answerOptions[i]);
+            optionsPanel.add(answerOptions[i]);
+            answerOptions[i].setForeground(Color.WHITE); // Set text color to white
+        }
+        
+        prevButton = new JButton("Previous"); // Initialize prevButton
+        nextButton = new JButton("Next"); // Initialize nextButton
+        JButton submitButton = new JButton("Submit");
+        prevButton.addActionListener(this);
+        nextButton.addActionListener(this);
+        submitButton.addActionListener(this);
+        
+        prevButton.setForeground(Color.WHITE); // Set text color to white
+        nextButton.setForeground(Color.WHITE); // Set text color to white
+        submitButton.setForeground(Color.WHITE); // Set text color to white
+        
+        JPanel navPanel = new JPanel(new FlowLayout());
+        navPanel.add(prevButton);
+        navPanel.add(nextButton);
+        navPanel.add(submitButton);
+        
+        quizPanel.add(topPanel, BorderLayout.NORTH);
+        quizPanel.add(optionsPanel, BorderLayout.CENTER);
+        quizPanel.add(navPanel, BorderLayout.SOUTH);
+        
+        quizFrame.add(quizPanel);
+        quizFrame.setSize(400, 300);
+        quizFrame.setLocationRelativeTo(null);
+        quizFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+
+    private void createScoreFrame() {
+        scoreFrame = new JFrame("Score");
+        JPanel scorePanel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        scorePanel.setOpaque(false);
+        scoreLabel = new JLabel("", SwingConstants.CENTER);
+        scoreLabel.setForeground(Color.WHITE); // Set text color to white
+        scorePanel.add(scoreLabel, BorderLayout.CENTER);
+        scoreFrame.add(scorePanel);
+        scoreFrame.setSize(400, 300);
+        scoreFrame.setLocationRelativeTo(null);
+        scoreFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+
+    private void loadQuestion() {
+        questionLabel.setText(questions[currentQuestionIndex]);
+        for (int i = 0; i < 4; i++) {
+            answerOptions[i].setText(options[currentQuestionIndex][i]);
+            answerOptions[i].setSelected(false);
+            answerOptions[i].setForeground(Color.WHITE); // Reset text color to white
+        }
+
+        // Highlight the correct answer after the user submits their choice
+        if (submitClicked) {
+            for (int i = 0; i < 4; i++) {
+                if (i == correctAnswers[currentQuestionIndex]) {
+                    answerOptions[i].setForeground(Color.GREEN); // Set correct answer to green
+                } else if (answerOptions[i].isSelected()) {
+                    answerOptions[i].setForeground(Color.RED); // Incorrect answers in red
+                }
+            }
+        }
+
+        prevButton.setVisible(currentQuestionIndex != 0);
+        nextButton.setVisible(currentQuestionIndex != questions.length - 1);
+    }
+
+    private void checkAnswer() {
+        for (int i = 0; i < 4; i++) {
+            if (answerOptions[i].isSelected() && i == correctAnswers[currentQuestionIndex]) {
+                score++;
+            }
+        }
+    }
+
+    private void showScore() {
+        scoreLabel.setText("Your Score: " + score + "/" + questions.length);
+    }
+
+    private void startTimer() {
+        timerLabel.setText("Time: " + timeRemaining);
+        timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (timeRemaining > 0) {
+                    timeRemaining--;
+                    timerLabel.setText("Time: " + timeRemaining);
+                } else {
+                    timer.cancel();
+                    JOptionPane.showMessageDialog(quizFrame, "Time's up! Quiz has ended.", "Time's Up", JOptionPane.INFORMATION_MESSAGE);
+                    submitClicked = true;
+                    checkAnswer();
+                    showScore();
+                    quizFrame.dispose();
+                    scoreFrame.setVisible(true);
+                }
+            }
+        }, 1000, 1000);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        String command = e.getActionCommand();
+        if ("Login".equals(command)) {
+            String email = emailField.getText();
+            String password = new String(passwordField.getPassword());
+
+            if (authenticateUser(email, password)) {
+                JOptionPane.showMessageDialog(null, "Successful login");
+                createWelcomeFrame(true);
+                loginFrame.dispose();
+            } else {
+                JOptionPane.showMessageDialog(null, "Invalid email or password", "Login Failed", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if ("Start Quiz".equals(command)) {
+            createCategoryFrame();
+            welcomeFrame.dispose();
+        } else if ("Programming Languages".equals(command) || "Others".equals(command) || "English".equals(command)) {
+            createLevelFrame();
+            categoryFrame.dispose();
+        } else if ("Easy".equals(command) || "Medium".equals(command) || "Hard".equals(command)) {
+            currentLevel = command;
+            currentQuestionIndex = 0;
+            score = 0;
+            timeRemaining = 20; // Set default time (in seconds) for quiz
+            createQuizFrame();
+            createScoreFrame();
+            loadQuestion();
+            quizTypeLabel.setText("Quiz Type: " + command);
+            quizFrame.setVisible(true);
+            startTimer();
+        } else if ("Previous".equals(command)) {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        } else if ("Next".equals(command)) {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            }
+        } else if ("Submit".equals(command)) {
+            checkAnswer();
+            showScore();
+            quizFrame.dispose();
+            scoreFrame.setVisible(true);
+        }
+    }
+
+    private boolean authenticateUser(String email, String password) {
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement("SELECT Upassword FROM user WHERE UEmail=?");
+            preparedStatement.setString(1, email);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                String storedPassword = resultSet.getString("Upassword");
+                return password.equals(storedPassword);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null, "Database error during authentication.", "Database Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+    public static void main(String[] args) {
+        new QuizApp1();
+    }
+}

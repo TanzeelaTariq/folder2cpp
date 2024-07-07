@@ -1,0 +1,1 @@
+Scaffold-DbContext "Server=DESKTOP-TKSUJ51\SQLEXPRESS;Database=RealEstate;Trusted_Connection=True;TrustServerCertificate=True" Microsoft.EntityFrameworkCore.SqlServer -Force
